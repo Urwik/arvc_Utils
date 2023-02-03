@@ -5,7 +5,7 @@ import numpy as np
 from plyfile import PlyData, PlyElement
 
 
-def s3dis2ply(root_dir, features, binary=True):
+def h52ply(root_dir, features, binary=True):
     data_path = os.path.abspath(root_dir)
     parent_dir = os.path.abspath(os.path.join(os.path.dirname(root_dir), os.pardir))
     file_info = 'all_files.txt'
@@ -45,23 +45,25 @@ def txt2ply(root_dir, features, binary=True):
         cloud = np.loadtxt(entry.path, delimiter=';')
         np2ply(cloud, features, filename, binary)
 
+def ply2np(path_to_file):
+    plydata = PlyData.read(path_to_file)
+    data = plydata.elements[0].data
+    # nm.memmap to np.ndarray
+    data = np.array(list(map(list, data)))
+    array = data[:,3]
+    return array
 
-def np2ply(data_array, features, ply_name, binary):
+def np2ply(data_array, out_dir, ply_name, features, binary):
+
+    abs_file_path = os.path.join(out_dir, ply_name + '.ply')
+
     cloud = list(map(tuple, data_array))
     vertex = np.array(cloud, dtype=features)
-
     el = PlyElement.describe(vertex, 'vertex')
-    out_dir = os.path.abspath(os.path.join(os.path.dirname(ROOT_DIR), os.pardir))
-    out_dir = os.path.join(out_dir, 'ply_dataset')
-    if not os.path.exists(out_dir):
-        print(out_dir)
-        os.mkdir(out_dir)
-
-    file_path_name = os.path.join(out_dir, ply_name + '.ply')
     if binary:
-        PlyData([el]).write(file_path_name)
+        PlyData([el]).write(abs_file_path)
     else:
-        PlyData([el], text=True).write(file_path_name)
+        PlyData([el], text=True).write(abs_file_path)
 
 
 if __name__ == '__main__':
