@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 from plyfile import PlyData, PlyElement
 import pandas as pd
 import open3d as o3d
-
+from tqdm import tqdm
 
 class PLYDatasetPlaneCount(Dataset):
     def __init__(self, root_dir = 'my_dataset_dir', features=None, labels_file='plane_count.csv', normalize=False):
@@ -82,7 +82,10 @@ class PLYDataset(Dataset):
             if file.endswith(".ply"):
                 self.dataset.append(file)
 
-        for file in self.dataset:
+        print('-'*50)
+        print("COMPUTING LABEL WEIGHTS")
+        for file in tqdm(self.dataset):
+            file = '07782.ply'
             path_to_file = os.path.join(self.root_dir, file)
             ply = PlyData.read(path_to_file)
             data = ply["vertex"].data
@@ -94,10 +97,21 @@ class PLYDataset(Dataset):
             if self.binary:
                 labels[labels > 0] = 1
 
+            # print(file)
             # COMPUTE WEIGHTS FOR EACH LABEL
             labels = np.sort(labels, axis=None)
-            _, weights = np.unique(labels, return_counts=True)
-            self.weights.append(weights/len(labels))
+            pesos, weights = np.unique(labels, return_counts=True)
+            if len(pesos < 2):
+                if pesos == 0:
+                    weights = np.array([1, 0])
+                else:
+                    weights = np.array([0, 1])
+
+            weights = weights / len(labels)
+            if len(self.weights) == 0:
+                self.weights = weights
+            else:
+                self.weights = np.vstack((self.weights, weights))
 
         self.weights = np.mean(self.weights, axis=0).astype(np.float32)
 
@@ -154,7 +168,7 @@ class RandDataset(Dataset):
 
 if __name__ == '__main__':
 
-    ROOT_DIR = os.path.abspath('/media/arvc/data/datasets/ARVCTRUSS/code_test/ply_xyzlabelnormal')
+    ROOT_DIR = os.path.abspath('/media/arvc/data/datasets/ARVCTRUSS/train/ply_xyzlabelnormal')
 
     dataset = PLYDataset(root_dir = ROOT_DIR,
                          features = [0, 1, 2],
