@@ -82,32 +82,33 @@ class PLYDataset(Dataset):
             if file.endswith(".ply"):
                 self.dataset.append(file)
 
+
+        # COMPUTE WEIGHTS FOR EACH LABEL IN THE WHOLE DATASET
         print('-'*50)
         print("COMPUTING LABEL WEIGHTS")
         for file in tqdm(self.dataset):
-            file = '07782.ply'
+            # READ THE FILE
             path_to_file = os.path.join(self.root_dir, file)
             ply = PlyData.read(path_to_file)
             data = ply["vertex"].data
-            # nm.memmap to np.ndarray
             data = np.array(list(map(list, data)))
 
+            # CONVERT TO BINARY LABELS
             labels = data[:, self.labels]
-
             if self.binary:
                 labels[labels > 0] = 1
 
-            # print(file)
-            # COMPUTE WEIGHTS FOR EACH LABEL
             labels = np.sort(labels, axis=None)
-            pesos, weights = np.unique(labels, return_counts=True)
-            if len(pesos < 2):
-                if pesos == 0:
+            k_lbl, weights = np.unique(labels, return_counts=True)
+            # SI SOLO EXISTE UNA CLASE EN LA NUBE (SOLO SUELO)
+            if len(k_lbl < 2):
+                if k_lbl[0] == 0:
                     weights = np.array([1, 0])
                 else:
                     weights = np.array([0, 1])
+            else:
+                weights = weights / len(labels)
 
-            weights = weights / len(labels)
             if len(self.weights) == 0:
                 self.weights = weights
             else:
@@ -177,7 +178,7 @@ if __name__ == '__main__':
                          binary = True,
                          transform = None)
 
-    print(dataset.weights)
+    print(f'{dataset.weights}.5f')
 
     # train_loader = torch.utils.data.DataLoader(dataset = dataset,
     #                                            batch_size = 2,
