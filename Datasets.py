@@ -7,47 +7,6 @@ import pandas as pd
 import open3d as o3d
 
 
-class PLYDatasetBinarySegmentation(Dataset):
-    def __init__(self, data_root='my_dataset_dir', _features=(0, 1, 2), _labels=[], normalize=False, transform=None):
-        super().__init__()
-        self.transform = transform
-        self.data_root = data_root
-        self._features = _features
-        self.labels = np.array(_labels)
-        self.normalize = normalize
-        self.dataset = []
-
-        self.dataset = os.listdir(self.data_root)
-
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, index):
-        file_name = self.dataset[index]
-        path_to_file = os.path.join(self.data_root, file_name)
-        ply = PlyData.read(path_to_file)
-        data = ply.elements[0].data # type: np.memmap
-        #nm.memmap to np.ndarray
-        data = np.array(list(map(list, data)))
-
-        features = data[:, list(self._features)]
-
-        if self.normalize:
-            # normalize
-            features = features - np.mean(features, axis=0)
-            features /= np.max(np.linalg.norm(features, axis=1))
-
-        if self.labels.size == 0:
-            labels = data[:, -1]
-        else:
-            labels = int(self.labels[index])
-
-        if self.transform is not None:
-            features, labels = self.transform(features, labels)
-
-        return features, labels, file_name.split('.')[0]
-
-
 class PLYDatasetPlaneCount(Dataset):
     def __init__(self, root_dir = 'my_dataset_dir', features=None, labels_file='plane_count.csv', normalize=False):
         super().__init__()
@@ -102,6 +61,7 @@ class PLYDataset(Dataset):
     def __init__(self, root_dir = 'my_dataset_dir', features=None, labels=None, normalize=False, binary = False, transform=None):
         super().__init__()
         self.root_dir = root_dir
+        self.weights = []
 
         if features is None:
             self.features = [0, 1, 2]
@@ -121,6 +81,25 @@ class PLYDataset(Dataset):
         for file in os.listdir(self.root_dir):
             if file.endswith(".ply"):
                 self.dataset.append(file)
+
+        for file in self.dataset:
+            path_to_file = os.path.join(self.root_dir, file)
+            ply = PlyData.read(path_to_file)
+            data = ply["vertex"].data
+            # nm.memmap to np.ndarray
+            data = np.array(list(map(list, data)))
+
+            labels = data[:, self.labels]
+
+            if self.binary:
+                labels[labels > 0] = 1
+
+            # COMPUTE WEIGHTS FOR EACH LABEL
+            labels = np.sort(labels, axis=None)
+            _, weights = np.unique(labels, return_counts=True)
+            self.weights.append(weights/len(labels))
+
+        self.weights = np.mean(self.weights, axis=0).astype(np.float32)
 
     def __len__(self):
         return len(self.dataset)
@@ -148,6 +127,11 @@ class PLYDataset(Dataset):
         if self.binary:
             labels[labels > 0] = 1
 
+        # COMPUTE WEIGHTS FOR EACH LABEL
+        # labels = np.sort(labels, axis=None)
+        # _, weights = np.unique(labels, return_counts=True)
+        # weights = weights/len(labels)
+
         if self.transform is not None:
             features, labels = self.transform(features, labels)
 
@@ -170,7 +154,7 @@ class RandDataset(Dataset):
 
 if __name__ == '__main__':
 
-    ROOT_DIR = os.path.abspath('/media/arvc/data/datasets/ARVC_GZF/train/ply_xyzlabelnormal')
+    ROOT_DIR = os.path.abspath('/media/arvc/data/datasets/ARVCTRUSS/code_test/ply_xyzlabelnormal')
 
     dataset = PLYDataset(root_dir = ROOT_DIR,
                          features = [0, 1, 2],
@@ -179,28 +163,18 @@ if __name__ == '__main__':
                          binary = True,
                          transform = None)
 
-    train_loader = torch.utils.data.DataLoader(dataset = dataset,
-                                               batch_size = 2,
-                                               shuffle = True,
-                                               num_workers = 1,
-                                               pin_memory = True)
+    print(dataset.weights)
 
-    for i, (points, label, filename) in enumerate(train_loader):
-        points = points.numpy()
-        label = label.numpy()
-        for z in range(len(points)):
-            labels_ = label[z]
-            xyz_ = points[z]
-            pcd = o3d.geometry.PointCloud()
-            pcd.points = o3d.utility.Vector3dVector(xyz_)
+    # train_loader = torch.utils.data.DataLoader(dataset = dataset,
+    #                                            batch_size = 2,
+    #                                            shuffle = True,
+    #                                            num_workers = 1,
+    #                                            pin_memory = True)
+    #
+    #
+    #
+    # for i, (points, label, weights, filename) in enumerate(train_loader):
+    #     print(f'{weights[0].detach().cpu().numpy()} - {filename[0]}')
+    #     print(f'{weights[1].detach().cpu().numpy()} - {filename[1]}')
 
-            colors = []
-            for point in labels_:
-                if point > 0:
-                    colors.append([0.0,0.7,0.0])
-                else:
-                    colors.append([0.7,0.0,0.0])
 
-            pcd.colors = o3d.utility.Vector3dVector(np.asarray(colors).astype(float))
-            o3d.visualization.draw_geometries([pcd])
-            print(f"Cloud {filename}")
