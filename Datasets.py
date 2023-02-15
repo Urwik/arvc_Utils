@@ -101,7 +101,7 @@ class PLYDataset(Dataset):
             labels = np.sort(labels, axis=None)
             k_lbl, weights = np.unique(labels, return_counts=True)
             # SI SOLO EXISTE UNA CLASE EN LA NUBE (SOLO SUELO)
-            if len(k_lbl < 2):
+            if k_lbl.size < 2:
                 if k_lbl[0] == 0:
                     weights = np.array([1, 0])
                 else:
@@ -178,8 +178,8 @@ if __name__ == '__main__':
                          binary = True,
                          transform = None)
 
-    print(f'{dataset.weights}.5f')
-
+    print(f'Weight 0: {dataset.weights[0]:.5f}')
+    print(f'Weight 1: {dataset.weights[1]:.5f}')
     # train_loader = torch.utils.data.DataLoader(dataset = dataset,
     #                                            batch_size = 2,
     #                                            shuffle = True,
