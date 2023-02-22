@@ -58,10 +58,9 @@ class PLYDatasetPlaneCount(Dataset):
 
 
 class PLYDataset(Dataset):
-    def __init__(self, root_dir = 'my_dataset_dir', features=None, labels=None, normalize=False, binary = False, transform=None):
+    def __init__(self, root_dir = 'my_dataset_dir', features=None, labels=None, normalize=False, binary = False, compute_weights=False):
         super().__init__()
         self.root_dir = root_dir
-        self.weights = []
 
         if features is None:
             self.features = [0, 1, 2]
@@ -75,46 +74,46 @@ class PLYDataset(Dataset):
 
         self.normalize = normalize
         self.binary = binary
-        self.transform = transform
 
         self.dataset = []
         for file in os.listdir(self.root_dir):
             if file.endswith(".ply"):
                 self.dataset.append(file)
 
+        if compute_weights:
+            self.weights = []
+            # COMPUTE WEIGHTS FOR EACH LABEL IN THE WHOLE DATASET
+            print('-'*50)
+            print("COMPUTING LABEL WEIGHTS")
+            for file in tqdm(self.dataset):
+                # READ THE FILE
+                path_to_file = os.path.join(self.root_dir, file)
+                ply = PlyData.read(path_to_file)
+                data = ply["vertex"].data
+                data = np.array(list(map(list, data)))
 
-        # COMPUTE WEIGHTS FOR EACH LABEL IN THE WHOLE DATASET
-        print('-'*50)
-        print("COMPUTING LABEL WEIGHTS")
-        for file in tqdm(self.dataset):
-            # READ THE FILE
-            path_to_file = os.path.join(self.root_dir, file)
-            ply = PlyData.read(path_to_file)
-            data = ply["vertex"].data
-            data = np.array(list(map(list, data)))
+                # CONVERT TO BINARY LABELS
+                labels = data[:, self.labels]
+                if self.binary:
+                    labels[labels > 0] = 1
 
-            # CONVERT TO BINARY LABELS
-            labels = data[:, self.labels]
-            if self.binary:
-                labels[labels > 0] = 1
-
-            labels = np.sort(labels, axis=None)
-            k_lbl, weights = np.unique(labels, return_counts=True)
-            # SI SOLO EXISTE UNA CLASE EN LA NUBE (SOLO SUELO)
-            if k_lbl.size < 2:
-                if k_lbl[0] == 0:
-                    weights = np.array([1, 0])
+                labels = np.sort(labels, axis=None)
+                k_lbl, weights = np.unique(labels, return_counts=True)
+                # SI SOLO EXISTE UNA CLASE EN LA NUBE (SOLO SUELO)
+                if k_lbl.size < 2:
+                    if k_lbl[0] == 0:
+                        weights = np.array([1, 0])
+                    else:
+                        weights = np.array([0, 1])
                 else:
-                    weights = np.array([0, 1])
-            else:
-                weights = weights / len(labels)
+                    weights = weights / len(labels)
 
-            if len(self.weights) == 0:
-                self.weights = weights
-            else:
-                self.weights = np.vstack((self.weights, weights))
+                if len(self.weights) == 0:
+                    self.weights = weights
+                else:
+                    self.weights = np.vstack((self.weights, weights))
 
-        self.weights = np.mean(self.weights, axis=0).astype(np.float32)
+            self.weights = np.mean(self.weights, axis=0).astype(np.float32)
 
     def __len__(self):
         return len(self.dataset)
