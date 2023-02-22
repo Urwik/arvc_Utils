@@ -146,9 +146,6 @@ class PLYDataset(Dataset):
         # _, weights = np.unique(labels, return_counts=True)
         # weights = weights/len(labels)
 
-        if self.transform is not None:
-            features, labels = self.transform(features, labels)
-
         return features, labels, file.split('.')[0]
 
 
@@ -175,7 +172,7 @@ if __name__ == '__main__':
                          labels = 3,
                          normalize = True,
                          binary = True,
-                         transform = None)
+                         compute_weights=False)
 
     print(f'Weight 0: {dataset.weights[0]:.5f}')
     print(f'Weight 1: {dataset.weights[1]:.5f}')
