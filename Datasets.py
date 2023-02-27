@@ -58,9 +58,10 @@ class PLYDatasetPlaneCount(Dataset):
 
 
 class PLYDataset(Dataset):
-    def __init__(self, root_dir = 'my_dataset_dir', features=None, labels=None, normalize=False, binary = False, compute_weights=False):
+    def __init__(self, root_dir = 'my_dataset_dir', features=None, labels=None, normalize=False, binary = False, add_range_=False, compute_weights=False):
         super().__init__()
         self.root_dir = root_dir
+        self.add_range = add_range_
 
         if features is None:
             self.features = [0, 1, 2]
@@ -138,6 +139,12 @@ class PLYDataset(Dataset):
             xyz /= furthest_distance
             features[:, [0,1,2]] = xyz
 
+        if self.add_range:
+            xyz = features[:, [0,1,2]]
+            D = np.sqrt(np.sum(abs(xyz) ** 2, axis=-1))
+            D = D[:, None]
+            features = np.hstack((features, D))
+
         if self.binary:
             labels[labels > 0] = 1
 
@@ -172,20 +179,19 @@ if __name__ == '__main__':
                          labels = 3,
                          normalize = True,
                          binary = True,
+                         add_range_=True,
                          compute_weights=False)
 
-    print(f'Weight 0: {dataset.weights[0]:.5f}')
-    print(f'Weight 1: {dataset.weights[1]:.5f}')
-    # train_loader = torch.utils.data.DataLoader(dataset = dataset,
-    #                                            batch_size = 2,
-    #                                            shuffle = True,
-    #                                            num_workers = 1,
-    #                                            pin_memory = True)
-    #
-    #
-    #
-    # for i, (points, label, weights, filename) in enumerate(train_loader):
-    #     print(f'{weights[0].detach().cpu().numpy()} - {filename[0]}')
-    #     print(f'{weights[1].detach().cpu().numpy()} - {filename[1]}')
+    # print(f'Weight 0: {dataset.weights[0]:.5f}')
+    # print(f'Weight 1: {dataset.weights[1]:.5f}')
+    train_loader = torch.utils.data.DataLoader(dataset = dataset,
+                                               batch_size = 2,
+                                               shuffle = True,
+                                               num_workers = 1,
+                                               pin_memory = True)
+
+    for i, (points, label, filename) in enumerate(train_loader):
+        points = points.detach().cpu().numpy()
+        print(points[0][0])
 
 
