@@ -155,7 +155,105 @@ class PLYDataset(Dataset):
 
         return features, labels, file.split('.')[0]
 
+class vis_Test_Dataset(Dataset):
+    def __init__(self, root_dir = 'my_dataset_dir', common_clouds_dir='', extend_clouds=[], features=None, labels=None, normalize=False, binary = False, add_range_=False, compute_weights=False):
+        super().__init__()
+        self.root_dir = root_dir
+        self.add_range = add_range_
 
+        if features is None:
+            self.features = [0, 1, 2]
+        else:
+            self.features = features
+
+        if labels is None:
+            self.labels = [-1]
+        else:
+            self.labels = labels
+
+        self.normalize = normalize
+        self.binary = binary
+
+        self.dataset = []
+        for file in os.listdir(common_clouds_dir):
+            if file.endswith(".ply"):
+                self.dataset.append(os.path.join(common_clouds_dir, file))
+        for file in extend_clouds:
+            self.dataset.append(os.path.join(self.root_dir, file))
+
+        if compute_weights:
+            self.weights = []
+            # COMPUTE WEIGHTS FOR EACH LABEL IN THE WHOLE DATASET
+            print('-'*50)
+            print("COMPUTING LABEL WEIGHTS")
+            for file in tqdm(self.dataset):
+                # READ THE FILE
+                path_to_file = os.path.join(self.root_dir, file)
+                ply = PlyData.read(path_to_file)
+                data = ply["vertex"].data
+                data = np.array(list(map(list, data)))
+
+                # CONVERT TO BINARY LABELS
+                labels = data[:, self.labels]
+                if self.binary:
+                    labels[labels > 0] = 1
+
+                labels = np.sort(labels, axis=None)
+                k_lbl, weights = np.unique(labels, return_counts=True)
+                # SI SOLO EXISTE UNA CLASE EN LA NUBE (SOLO SUELO)
+                if k_lbl.size < 2:
+                    if k_lbl[0] == 0:
+                        weights = np.array([1, 0])
+                    else:
+                        weights = np.array([0, 1])
+                else:
+                    weights = weights / len(labels)
+
+                if len(self.weights) == 0:
+                    self.weights = weights
+                else:
+                    self.weights = np.vstack((self.weights, weights))
+
+            self.weights = np.mean(self.weights, axis=0).astype(np.float32)
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, index):
+        path_to_file = os.path.abspath(self.dataset[index]) #type: os.path
+        # path_to_file = os.path.join(self.root_dir, file)
+        ply = PlyData.read(path_to_file)
+        data = ply["vertex"].data
+        # nm.memmap to np.ndarray
+        data = np.array(list(map(list, data)))
+
+        features = data[:, self.features]
+        labels = data[:, self.labels]
+
+        if self.normalize:
+            # XYZ suposed to be 3 first features
+            xyz = features[:, [0,1,2]]
+            centroid = np.mean(xyz, axis=0)
+            xyz -= centroid
+            furthest_distance = np.max(np.sqrt(np.sum(abs(xyz) ** 2, axis=-1)))
+            xyz /= furthest_distance
+            features[:, [0,1,2]] = xyz
+
+        if self.add_range:
+            xyz = features[:, [0,1,2]]
+            D = np.sqrt(np.sum(abs(xyz) ** 2, axis=-1))
+            D = D[:, None]
+            features = np.hstack((features, D))
+
+        if self.binary:
+            labels[labels > 0] = 1
+
+        # COMPUTE WEIGHTS FOR EACH LABEL
+        # labels = np.sort(labels, axis=None)
+        # _, weights = np.unique(labels, return_counts=True)
+        # weights = weights/len(labels)
+
+        return features, labels, os.path.basename(path_to_file).split('.')[0]
 class RandDataset(Dataset):
   def __init__(self, n_clouds=50, n_points=3000, n_features=3):
     super(RandDataset, self).__init__()
