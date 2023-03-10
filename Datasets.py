@@ -58,7 +58,7 @@ class PLYDatasetPlaneCount(Dataset):
 
 
 class PLYDataset(Dataset):
-    def __init__(self, root_dir = 'my_dataset_dir', features=None, labels=None, normalize=False, binary = False, add_range_=False, compute_weights=False):
+    def __init__(self, root_dir = 'my_dataset_dir', features=None, labels=None, normalize=False, binary = False, add_range_=False,compute_weights=False):
         super().__init__()
         self.root_dir = root_dir
         self.add_range = add_range_
@@ -410,26 +410,28 @@ class RandDataset(Dataset):
 
 if __name__ == '__main__':
 
-    ROOT_DIR = os.path.abspath('/media/arvc/data/datasets/ARVCTRUSS/train/ply_xyzlabelnormal')
+    ROOT_DIR = os.path.abspath('/media/arvc/data/experiments/ouster/real/entrance_innova/ply_xyznormal')
 
     dataset = PLYDataset(root_dir = ROOT_DIR,
-                         features = [0, 1, 2],
-                         labels = 3,
+                         features = [0,1,2,3,4,5],
+                         labels = [],
                          normalize = True,
-                         binary = True,
-                         add_range_=True,
+                         binary = False,
+                         add_range_=False,
                          compute_weights=False)
 
-    # print(f'Weight 0: {dataset.weights[0]:.5f}')
-    # print(f'Weight 1: {dataset.weights[1]:.5f}')
     train_loader = torch.utils.data.DataLoader(dataset = dataset,
-                                               batch_size = 2,
+                                               batch_size = 1,
                                                shuffle = True,
                                                num_workers = 1,
-                                               pin_memory = True)
+                                               pin_memory = True,
+                                               drop_last=True)
 
     for i, (points, label, filename) in enumerate(train_loader):
-        points = points.detach().cpu().numpy()
-        print(points[0][0])
+        # print(points.size())
+        points = points.numpy()
+        cloud = points[0]
+        normals = cloud[:, [3,4,5]]
+        print(normals)
 
 
