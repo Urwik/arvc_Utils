@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
 import sklearn.metrics as metrics
 import random
 import shutil
@@ -9,7 +8,10 @@ import math
 import socket
 import sys
 from datetime import datetime
-import Config
+import arvcNN.Config
+
+
+torch.nn.NLLLoss()
 
 class Trainer():
     def __init__(self, config_obj_ ):
@@ -18,7 +20,8 @@ class Trainer():
         self.loss_fn = None
         self.optimizer = None
         self.dataloader = None
-        self.device = None
+        self.device = self.config.train.device
+        
         self.data = None
         self.print_info = False
         self.print_every_x_batches = 10
@@ -26,11 +29,12 @@ class Trainer():
     def train(self):
         current_clouds = 0
 
-        # TRAINING
-        print('# ' + ('-' * 50))
-        print('# TRAINING')
-        self.model.train()
+        # # TRAINING
+        # print('# ' + ('-' * 50))
+        # print('# TRAINING')
+        # self.model.train()
         for batch, self.data in enumerate(self.dataloader):
+            print(f'Len of data: {len(self.data)}')            
             
             features = self.data[0].to(self.device, dtype=torch.float32)
             labels = self.data[1].to(self.device, dtype=torch.int32)
@@ -38,24 +42,24 @@ class Trainer():
             if len(self.data) == 3:
                 filenames = self.data[2]  
 
-            out = self.model(features)
+            # out = self.model(features)
 
-            pred_conv = out[0]
-            m = torch.nn.Sigmoid()
-            pred_prob = m(pred_conv)
+            # pred_conv = out[0]
+            # m = torch.nn.Sigmoid()
+            # pred_prob = m(pred_conv)
 
-            loss = self.loss_fn(pred_prob, labels)
+            # loss = self.loss_fn(pred_prob, labels)
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+            # self.optimizer.zero_grad()
+            # loss.backward()
+            # self.optimizer.step()
 
-            current_clouds += features.size(dim=0)
+            # current_clouds += features.size(dim=0)
 
-            if self.print_info:
-                if batch % self.print_every_x_batches == 0 or batch == 0:  # print every (% X) batches
-                    print(f' - [Batch: {current_clouds}/{len(self.dataloader.dataset)}],'
-                          f' / Train Loss: {loss:.4f}')
+            # if self.print_info:
+            #     if batch % self.print_every_x_batches == 0 or batch == 0:  # print every (% X) batches
+            #         print(f' - [Batch: {current_clouds}/{len(self.dataloader.dataset)}],'
+            #               f' / Train Loss: {loss:.4f}')
 
     def valid(self):
 

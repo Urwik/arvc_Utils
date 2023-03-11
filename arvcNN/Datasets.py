@@ -3,9 +3,9 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from plyfile import PlyData, PlyElement
-import pandas as pd
-import open3d as o3d
-from tqdm import tqdm
+# import pandas as pd
+# import open3d as o3d
+# from tqdm import tqdm
 
 class PLYDatasetPlaneCount(Dataset):
     def __init__(self, root_dir = 'my_dataset_dir', features=None, labels_file='plane_count.csv', normalize=False):

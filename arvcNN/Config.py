@@ -21,6 +21,8 @@ class train:
         self.epoch_timeout = None
         self.threshold_method = None
         self.termination_criteria = None
+        self.model = None
+
 
 class test:
     def __init__(self):
@@ -30,11 +32,14 @@ class test:
         self.save_pred_clouds = None
         
 
-
-
 class Config():
 
     def __init__(self, root_dir = ''):
+        """Stores information about training and test configuration 
+
+        Args:
+            root_dir {string}: Absolute path to the config.yaml file.
+        """
         with open(root_dir) as file:
             self.config = yaml.safe_load(file)
 
@@ -66,3 +71,6 @@ class Config():
         self.test.device = self.config["test"]["DEVICE"]
         self.test.batch_size = self.config["test"]["BATCH_SIZE"]
         self.test.save_pred_clouds = self.config["test"]["SAVE_PRED_CLOUDS"]
+
+    def parseModel(self):
+        if self.train.model == "arvc_PointNet_bs"
