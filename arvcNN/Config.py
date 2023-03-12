@@ -1,5 +1,4 @@
 import yaml
-import os
 
 class train:
     def __init__(self):
@@ -71,6 +70,3 @@ class Config():
         self.test.device = self.config["test"]["DEVICE"]
         self.test.batch_size = self.config["test"]["BATCH_SIZE"]
         self.test.save_pred_clouds = self.config["test"]["SAVE_PRED_CLOUDS"]
-
-    def parseModel(self):
-        if self.train.model == "arvc_PointNet_bs"
